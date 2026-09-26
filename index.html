@@ -556,10 +556,9 @@
                 grid-template-columns: 1fr 1fr 1fr;
             }
 
-            .btn-grid {
-                position: sticky;
-                bottom: 8px;
-                z-index: 5;
+            .btn-grid.three {
+                position: relative;
+                z-index: 6;
             }
         }
 
@@ -789,7 +788,7 @@
         controls.dampingFactor = 0.055;
         controls.screenSpacePanning = true;
         controls.minDistance = 5;
-        controls.maxDistance = 25;
+        controls.maxDistance = 45;
         controls.target.set(0, 0, 0);
         controls.update();
 
@@ -1217,6 +1216,7 @@
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h, false);
+            controls.maxDistance = w <= 680 ? 80 : 45;
         }
         resize();
         reset();
