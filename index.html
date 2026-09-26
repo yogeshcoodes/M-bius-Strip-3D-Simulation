@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d10" />
+    <title>Möbius Lab — Interactive Topology</title>
+    <style>
+        /* ===== Global Reset ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Google Sans", "Inter", system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: all .2s ease;
+        }
+
+        * {
+            scroll-behavior: smooth;
+        }
+
+        input,
+        textarea,
+        button,
+        select,
+        a {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+        }
+
+        a:focus,
+        a:visited,
+        a:active {
+            outline: none;
+        }
+
+        :root {
+            --bg: #080a0d;
+            --surface: #11151a;
+            --surface-2: #171c23;
+            --surface-3: #202631;
+            --text: #f2f5f8;
+            --muted: #9aa5b2;
+            --line: rgba(255, 255, 255, .08);
+            --accent: #89a7ff;
+            --accent-2: #73e0c1;
+            --danger: #ff8b8b;
+            --shadow: 0 18px 55px rgba(0, 0, 0, .32);
+            --radius: 22px;
+        }
+
+        body {
+            min-height: 100svh;
+            width: 100%;
+            background:
+                radial-gradient(circle at 50% -20%, rgba(137, 167, 255, .12), transparent 45%),
+                var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+            color: inherit;
+        }
+
+        .app {
+            width: min(1500px, 100%);
+            min-height: 100svh;
+            margin: 0 auto;
+            padding: max(14px, env(safe-area-inset-top)) 14px max(20px, env(safe-area-inset-bottom));
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 4px 14px;
+        }
+
+        .brand h1 {
+            font-size: clamp(20px, 2.4vw, 30px);
+            letter-spacing: -.04em;
+            font-weight: 750;
+        }
+
+        .brand p {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .chip,
+        .icon-btn,
+        .primary-btn,
+        .ghost-btn {
+            min-height: 40px;
+            border-radius: 13px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 0 13px;
+            user-select: none;
+        }
+
+        .chip {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .chip strong {
+            color: var(--text);
+        }
+
+        .icon-btn {
+            width: 40px;
+            padding: 0;
+        }
+
+        .primary-btn {
+            background: var(--accent);
+            color: #08101d;
+            border-color: transparent;
+            font-weight: 700;
+        }
+
+        .ghost-btn {
+            background: transparent;
+            color: var(--text);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+
+        button:active {
+            transform: translateY(0) scale(.985);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(330px, .65fr);
+            gap: 14px;
+            align-items: start;
+        }
+
+        .viewer-card,
+        .panel,
+        .explain-card,
+        .timeline-card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .025), rgba(255, 255, 255, .01)), var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .viewer-card {
+            overflow: hidden;
+            position: relative;
+            min-height: min(72svh, 760px);
+        }
+
+        #viewport {
+            position: relative;
+            width: 100%;
+            height: min(72svh, 760px);
+            min-height: 500px;
+            touch-action: none;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 42%, rgba(137, 167, 255, .08), transparent 33%),
+                radial-gradient(circle at 50% 120%, rgba(115, 224, 193, .055), transparent 45%);
+        }
+
+        #viewport canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .viewer-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 14px;
+        }
+
+        .viewer-hud {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .status-pill {
+            pointer-events: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(9, 12, 16, .72);
+            border: 1px solid rgba(255, 255, 255, .08);
+            backdrop-filter: blur(15px);
+            border-radius: 999px;
+            padding: 8px 11px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-2);
+            box-shadow: 0 0 14px var(--accent-2);
+        }
+
+        .viewer-hint {
+            align-self: center;
+            margin-bottom: 8px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: rgba(9, 12, 16, .66);
+            border: 1px solid rgba(255, 255, 255, .08);
+            color: #b6c0cc;
+            font-size: 11px;
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-stack {
+            display: grid;
+            gap: 14px;
+        }
+
+        .panel {
+            padding: 15px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .section-head h2 {
+            font-size: 14px;
+            letter-spacing: -.02em;
+        }
+
+        .section-head p {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .control-row {
+            display: grid;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .label-row strong {
+            color: var(--text);
+            font-weight: 650;
+        }
+
+        input[type="range"] {
+            appearance: none;
+            width: 100%;
+            height: 5px;
+            border-radius: 10px;
+            background: #2a313b;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid var(--surface);
+            background: var(--accent);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, .22);
+            cursor: grab;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid var(--surface);
+            background: var(--accent);
+            cursor: grab;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-grid.three {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 0;
+            border-top: 1px solid var(--line);
+        }
+
+        .switch-row:first-child {
+            border-top: 0;
+        }
+
+        .switch-copy strong {
+            display: block;
+            font-size: 12px;
+        }
+
+        .switch-copy span {
+            display: block;
+            color: var(--muted);
+            font-size: 10px;
+            margin-top: 3px;
+        }
+
+        .switch {
+            width: 45px;
+            height: 25px;
+            border-radius: 99px;
+            background: #2a313b;
+            padding: 3px;
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+
+        .switch i {
+            display: block;
+            width: 19px;
+            height: 19px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform .18s ease;
+        }
+
+        .switch.on {
+            background: var(--accent);
+        }
+
+        .switch.on i {
+            transform: translateX(20px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .stat {
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 10px;
+        }
+
+        .stat span {
+            color: var(--muted);
+            font-size: 9px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        .timeline-card,
+        .explain-card {
+            margin-top: 14px;
+            padding: 17px;
+        }
+
+        .timeline {
+            display: flex;
+            gap: 7px;
+            overflow: auto hidden;
+            padding-bottom: 4px;
+            scrollbar-width: thin;
+        }
+
+        .step {
+            flex: 0 0 auto;
+            min-width: 114px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .step.active {
+            border-color: rgba(137, 167, 255, .65);
+            box-shadow: inset 0 0 0 1px rgba(137, 167, 255, .18);
+        }
+
+        .step b {
+            font-size: 12px;
+        }
+
+        .step small {
+            display: block;
+            color: var(--muted);
+            margin-top: 4px;
+            font-size: 10px;
+        }
+
+        .explain-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 9px;
+        }
+
+        .fact {
+            padding: 12px;
+            border-radius: 15px;
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+        }
+
+        .fact .num {
+            color: var(--accent);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .fact h3 {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .fact p {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.45;
+            margin-top: 5px;
+        }
+
+        .live-explanation {
+            margin-top: 12px;
+            border-radius: 16px;
+            padding: 13px;
+            background: linear-gradient(135deg, rgba(137, 167, 255, .10), rgba(115, 224, 193, .05));
+            border: 1px solid rgba(137, 167, 255, .16);
+        }
+
+        .live-explanation h3 {
+            font-size: 13px;
+        }
+
+        .live-explanation p {
+            color: #b9c3ce;
+            font-size: 12px;
+            line-height: 1.55;
+            margin-top: 5px;
+        }
+
+        .footer-note {
+            color: #67717d;
+            font-size: 10px;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .panel-stack {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 680px) {
+            .app {
+                padding-left: 9px;
+                padding-right: 9px;
+            }
+
+            .topbar {
+                align-items: flex-start;
+            }
+
+            .top-actions .chip {
+                display: none;
+            }
+
+            #viewport,
+            .viewer-card {
+                height: 58svh;
+                min-height: 430px;
+            }
+
+            .panel-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .explain-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+
+            .btn-grid {
+                position: sticky;
+                bottom: 8px;
+                z-index: 5;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .brand p {
+                max-width: 190px;
+            }
+
+            .explain-grid {
+                grid-template-columns: 1fr;
+            }
+
+            #viewport,
+            .viewer-card {
+                min-height: 400px;
+            }
+        }
+
+        .flash {
+            animation: flash .45s ease;
+        }
+
+        @keyframes flash {
+            0% {
+                filter: brightness(1);
+            }
+
+            45% {
+                filter: brightness(1.3);
+            }
+
+            100% {
+                filter: brightness(1);
+            }
+        }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+    <div class="app">
+        <header class="topbar">
+            <div class="brand">
+                <h1>Möbius Lab</h1>
+                <p>Interactive topology · geometry · cutting experiment</p>
+            </div>
+            <div class="top-actions">
+                <div class="chip"><strong id="cutCountTop">0</strong>&nbsp; cuts</div>
+                <button class="icon-btn" id="autoRotateBtn" title="Auto rotate">↻</button>
+                <button class="icon-btn" id="resetBtn" title="Reset simulation">↺</button>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section class="viewer-card">
+                <div id="viewport">
+                    <div class="viewer-overlay">
+                        <div class="viewer-hud">
+                            <div class="status-pill"><i class="dot"></i><span id="statusText">Live 3D simulation</span>
+                            </div>
+                            <div class="status-pill"><span id="modeText">Möbius strip</span></div>
+                        </div>
+                        <div class="viewer-hint">Drag to orbit · pinch / wheel to zoom · right-drag to pan</div>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="panel-stack">
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <h2>Experiment</h2>
+                            <p>Change the geometry, then cut it.</p>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="label-row"><span>Half-twists</span><strong id="twistLabel">1</strong></div>
+                        <input id="twistRange" type="range" min="1" max="6" step="1" value="1">
+                    </div>
+
+                    <div class="control-row">
+                        <div class="label-row"><span>Cut position</span><strong id="cutLabel">50% · center</strong>
+                        </div>
+                        <input id="cutRange" type="range" min="20" max="80" step="1" value="50">
+                    </div>
+
+                    <div class="btn-grid">
+                        <button class="primary-btn" id="cutBtn">✂ Cut strip</button>
+                        <button class="ghost-btn" id="centerBtn">Center cut</button>
+                    </div>
+                    <div class="btn-grid three">
+                        <button class="ghost-btn" id="undoBtn">Undo</button>
+                        <button class="ghost-btn" id="redoBtn">Redo</button>
+                        <button class="ghost-btn" id="clearBtn">Clear</button>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <h2>View & proof</h2>
+                            <p>Turn visual clues on/off.</p>
+                        </div>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-copy"><strong>Auto rotate</strong><span>Slow cinematic orbit</span></div>
+                        <button class="switch" id="autoSwitch"><i></i></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-copy"><strong>Surface grid</strong><span>Reveal the parameter lines</span>
+                        </div>
+                        <button class="switch on" id="gridSwitch"><i></i></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-copy"><strong>Cut guide</strong><span>Show selected cut path</span></div>
+                        <button class="switch on" id="guideSwitch"><i></i></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-copy"><strong>Walker proof</strong><span>Trace the one-sided path</span>
+                        </div>
+                        <button class="switch" id="walkerSwitch"><i></i></button>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="section-head">
+                        <div>
+                            <h2>Live topology</h2>
+                            <p>Current visible result</p>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat"><span>Pieces</span><strong id="piecesStat">1</strong></div>
+                        <div class="stat"><span>Twists</span><strong id="twistsStat">1</strong></div>
+                        <div class="stat"><span>Type</span><strong id="typeStat">Möbius</strong></div>
+                    </div>
+                    <div class="live-explanation">
+                        <h3 id="liveTitle">One side. One boundary.</h3>
+                        <p id="liveText">The starting strip has one continuous surface. A pen can travel from one
+                            apparent side to the other without crossing an edge.</p>
+                    </div>
+                </section>
+            </aside>
+        </main>
+
+        <section class="timeline-card">
+            <div class="section-head">
+                <div>
+                    <h2>Cut history</h2>
+                    <p>Click a step to inspect what the topology changed into.</p>
+                </div>
+                <div class="chip">state <strong id="historyState">0</strong></div>
+            </div>
+            <div class="timeline" id="timeline"></div>
+        </section>
+
+        <section class="explain-card">
+            <div class="section-head">
+                <div>
+                    <h2>What is this showing?</h2>
+                    <p>The simulation separates geometry from topology.</p>
+                </div>
+            </div>
+            <div class="explain-grid">
+                <article class="fact">
+                    <div class="num">01</div>
+                    <h3>Non-orientable</h3>
+                    <p>A Möbius strip has no globally consistent front/back orientation. Follow a center path once and
+                        your local orientation flips.</p>
+                </article>
+                <article class="fact">
+                    <div class="num">02</div>
+                    <h3>One boundary</h3>
+                    <p>The two apparent long edges are actually one continuous boundary curve after the half-twist and
+                        join.</p>
+                </article>
+                <article class="fact">
+                    <div class="num">03</div>
+                    <h3>Center cut</h3>
+                    <p>Cutting a one-half-twist Möbius strip along its center produces one longer band rather than two
+                        separate bands.</p>
+                </article>
+                <article class="fact">
+                    <div class="num">04</div>
+                    <h3>Repeat the experiment</h3>
+                    <p>The resulting band has four half-twists. A later center cut can split an even-twist band into two
+                        linked bands with the same twist count.</p>
+                </article>
+            </div>
+            <p class="footer-note">This browser simulation generates its ribbon geometry procedurally. The recursive cut
+                sequence follows standard Möbius-strip topology rules; the UI limits how many rendered pieces are shown
+                at once for mobile performance.</p>
+        </section>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const viewport = document.getElementById('viewport');
+        const $ = (id) => document.getElementById(id);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x080a0d);
+
+        const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 1000);
+        camera.position.set(0, 4.5, 12.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        viewport.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.055;
+        controls.screenSpacePanning = true;
+        controls.minDistance = 5;
+        controls.maxDistance = 25;
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        scene.add(new THREE.HemisphereLight(0xbdd1ff, 0x11151d, 2.15));
+        const key = new THREE.DirectionalLight(0xffffff, 3.1);
+        key.position.set(5, 8, 8);
+        key.castShadow = true;
+        scene.add(key);
+        const fill = new THREE.PointLight(0x79a9ff, 25, 40, 2);
+        fill.position.set(-7, -3, 4);
+        scene.add(fill);
+        const rim = new THREE.PointLight(0x73e0c1, 20, 36, 2);
+        rim.position.set(6, -1, -7);
+        scene.add(rim);
+
+        const root = new THREE.Group();
+        scene.add(root);
+
+        const floor = new THREE.Mesh(
+            new THREE.CircleGeometry(13, 96),
+            new THREE.MeshBasicMaterial({ color: 0x0b0e12, transparent: true, opacity: .65 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -3.6;
+        scene.add(floor);
+
+        const grid = new THREE.GridHelper(28, 28, 0x202630, 0x14181e);
+        grid.position.y = -3.58;
+        grid.material.transparent = true;
+        grid.material.opacity = .33;
+        scene.add(grid);
+
+        const state = {
+            settings: { halfTwists: 1, cutPercent: 50, autoRotate: false, showGrid: true, showGuide: true, walker: false },
+            pieces: [{ id: 1, kind: 'mobius', halfTwists: 1, length: 1, width: 1, offset: 0, parentCut: null }],
+            history: [],
+            historyIndex: -1,
+            nextId: 2,
+            selectedId: 1,
+        };
+
+        let meshes = [];
+        let walkerGroup = new THREE.Group();
+        root.add(walkerGroup);
+        let clock = new THREE.Clock();
+        let cutFlash = 0;
+
+        function isMobius(piece) { return Math.abs(piece.halfTwists) % 2 === 1; }
+
+        function pieceGeometry(piece, uSegments = 160, vSegments = 18) {
+            const R = 3.0 * Math.max(0.92, piece.length * 0.98);
+            const halfWidth = 1.03 * piece.width;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const normals = [];
+            const uvs = [];
+            const indices = [];
+
+            for (let i = 0; i <= uSegments; i++) {
+                const s = i / uSegments;
+                const theta = s * Math.PI * 2;
+                const twist = piece.halfTwists * Math.PI * s;
+                const c = Math.cos(twist), si = Math.sin(twist);
+                for (let j = 0; j <= vSegments; j++) {
+                    const v = (j / vSegments) * 2 - 1;
+                    const w = v * halfWidth;
+                    const radial = R + w * c;
+                    positions.push(radial * Math.cos(theta), w * si, radial * Math.sin(theta));
+                    uvs.push(s, (v + 1) / 2);
+                }
+            }
+
+            for (let i = 0; i < uSegments; i++) {
+                for (let j = 0; j < vSegments; j++) {
+                    const a = i * (vSegments + 1) + j;
+                    const b = a + 1;
+                    const c = a + (vSegments + 1);
+                    const d = c + 1;
+                    indices.push(a, c, b, b, c, d);
+                }
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+
+            // Split piece into an individual group transform so cut results can be spread apart.
+            return geometry;
+        }
+
+        function colorFor(piece, index) {
+            const palette = [0x8da8ff, 0x74ddbf, 0xffb56b, 0xd58cff, 0xff7fa4, 0x69c9ff];
+            return palette[index % palette.length];
+        }
+
+        function createPiece(piece, index, count) {
+            const geometry = pieceGeometry(piece);
+            const material = new THREE.MeshStandardMaterial({
+                color: colorFor(piece, index),
+                roughness: .3,
+                metalness: .14,
+                side: THREE.DoubleSide,
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData.pieceId = piece.id;
+            mesh.userData.baseColor = material.color.clone();
+
+            // Arrange multiple components around the center without destroying their individual form.
+            if (count > 1) {
+                const ring = Math.max(1.7, Math.min(4.0, count * .55));
+                const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+                mesh.position.set(Math.cos(angle) * ring, (index % 3 - 1) * 0.35, Math.sin(angle) * ring);
+                mesh.rotation.y = -angle * .45;
+                mesh.rotation.z = (index % 2 ? 1 : -1) * 0.12;
+            }
+
+            return mesh;
+        }
+
+        function clearMeshes() {
+            for (const mesh of meshes) {
+                mesh.geometry.dispose();
+                mesh.material.dispose();
+                root.remove(mesh);
+            }
+            meshes = [];
+        }
+
+        function addSurfaceGridOverlay(mesh) {
+            if (!state.settings.showGrid) return;
+            const edges = new THREE.EdgesGeometry(mesh.geometry, 22);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .10 }));
+            mesh.add(line);
+        }
+
+        function rebuildScene() {
+            clearMeshes();
+            walkerGroup.clear();
+
+            // Keep render complexity sane on phones.
+            const visiblePieces = state.pieces.slice(0, 64);
+            visiblePieces.forEach((piece, index) => {
+                const mesh = createPiece(piece, index, visiblePieces.length);
+                mesh.scale.setScalar(piece.length > 1 ? 1.0 : 1.0);
+                root.add(mesh);
+                addSurfaceGridOverlay(mesh);
+                meshes.push(mesh);
+            });
+
+            updateGuide();
+            if (state.settings.walker && state.pieces.length === 1) createWalker();
+            updateUI();
+        }
+
+        function updateGuide() {
+            const old = root.getObjectByName('cutGuide');
+            if (old) root.remove(old);
+            if (!state.settings.showGuide || state.pieces.length !== 1) return;
+
+            const piece = state.pieces[0];
+            const percent = state.settings.cutPercent / 100;
+            // v=-1 -> edge, +1 -> opposite edge; 50% is center.
+            const v = percent * 2 - 1;
+            const R = 3 * Math.max(.92, piece.length * .98);
+            const w = v * 1.03 * piece.width;
+            const pts = [];
+            const samples = 180;
+            for (let i = 0; i <= samples; i++) {
+                const s = i / samples;
+                const theta = s * Math.PI * 2;
+                const twist = piece.halfTwists * Math.PI * s;
+                const radial = R + w * Math.cos(twist);
+                pts.push(new THREE.Vector3(radial * Math.cos(theta), w * Math.sin(twist) + .045, radial * Math.sin(theta)));
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: 0xff6f75, transparent: true, opacity: .98 });
+            const line = new THREE.Line(geo, mat);
+            line.name = 'cutGuide';
+            root.add(line);
+        }
+
+        function createWalker() {
+            const group = new THREE.Group();
+            group.name = 'walker';
+            const marker = new THREE.Mesh(new THREE.SphereGeometry(.105, 20, 20), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8da8ff, emissiveIntensity: 3 }));
+            const trail = new THREE.Mesh(new THREE.TorusGeometry(.19, .027, 10, 40), new THREE.MeshBasicMaterial({ color: 0x8da8ff, transparent: true, opacity: .75 }));
+            group.add(marker, trail);
+            walkerGroup.add(group);
+            group.userData.marker = marker;
+        }
+
+        function updateWalker(time) {
+            if (!state.settings.walker || state.pieces.length !== 1) return;
+            const p = state.pieces[0];
+            const markerGroup = walkerGroup.getObjectByName('walker');
+            if (!markerGroup) return;
+            // Two complete loops visually demonstrate the orientation reversal and return.
+            const s = (time * .055) % 2;
+            const theta = (s % 1) * Math.PI * 2;
+            const twist = p.halfTwists * Math.PI * (s % 1);
+            const R = 3 * Math.max(.92, p.length * .98);
+            const w = 0;
+            const pos = new THREE.Vector3(R * Math.cos(theta), 0, R * Math.sin(theta));
+            markerGroup.position.copy(pos);
+            markerGroup.rotation.y = twist;
+            markerGroup.userData.marker.material.emissiveIntensity = 2.2 + Math.sin(time * 5) * .8;
+        }
+
+        function performCenterCut(piece) {
+            if (piece.halfTwists % 2 !== 0) {
+                // Odd half-twist count -> one longer loop with 2n+2 half twists.
+                return [{
+                    id: state.nextId++, kind: 'band', halfTwists: piece.halfTwists * 2 + 2,
+                    length: piece.length * 2, width: piece.width * .52,
+                    offset: 0, parentCut: piece.id,
+                }];
+            }
+            // Even half-twist count -> two linked loops with the same twist count.
+            return [0, 1].map(i => ({
+                id: state.nextId++, kind: 'band', halfTwists: piece.halfTwists,
+                length: piece.length, width: piece.width * .52,
+                offset: i, parentCut: piece.id,
+            }));
+        }
+
+        function performOffCenterCut(piece, percent) {
+            // This is an intentionally honest visualization: the canonical topology rules above
+            // are exact for the center cut. Off-center cuts are represented as a trim-like split
+            // so the viewer can explore geometry without pretending the result is a universal rule.
+            const asym = Math.abs(percent - 50) / 30;
+            const retained = 1 - .42 * asym;
+            const trimmed = .42 * asym;
+            if (piece.halfTwists % 2 !== 0) {
+                return [
+                    { id: state.nextId++, kind: 'mobius', halfTwists: piece.halfTwists, length: piece.length, width: piece.width * retained, offset: 0, parentCut: piece.id },
+                    { id: state.nextId++, kind: 'band', halfTwists: 4, length: piece.length * 2, width: piece.width * trimmed * .5, offset: 1, parentCut: piece.id }
+                ];
+            }
+            return [
+                { id: state.nextId++, kind: 'band', halfTwists: piece.halfTwists, length: piece.length, width: piece.width * retained, offset: 0, parentCut: piece.id },
+                { id: state.nextId++, kind: 'band', halfTwists: piece.halfTwists, length: piece.length, width: piece.width * trimmed, offset: 1, parentCut: piece.id }
+            ];
+        }
+
+        function cutSelected() {
+            const idx = state.pieces.findIndex(p => p.id === state.selectedId);
+            if (idx < 0) return;
+            if (state.pieces.length >= 64) {
+                setStatus('Render limit reached — topology can continue conceptually.');
+                return;
+            }
+
+            const current = state.pieces[idx];
+            const pct = state.settings.cutPercent;
+            const nextPieces = (pct === 50) ? performCenterCut(current) : performOffCenterCut(current, pct);
+            state.pieces.splice(idx, 1, ...nextPieces);
+            state.selectedId = nextPieces[0]?.id ?? state.pieces[0]?.id ?? null;
+            state.history = state.history.slice(0, state.historyIndex + 1);
+            state.history.push(snapshot());
+            state.historyIndex++;
+            cutFlash = 1;
+            rebuildScene();
+            document.querySelector('.viewer-card').classList.remove('flash');
+            void document.querySelector('.viewer-card').offsetWidth;
+            document.querySelector('.viewer-card').classList.add('flash');
+        }
+
+        function snapshot() {
+            return JSON.parse(JSON.stringify({
+                pieces: state.pieces,
+                selectedId: state.selectedId,
+                settings: state.settings,
+            }));
+        }
+
+        function restoreSnapshot(snap) {
+            state.pieces = JSON.parse(JSON.stringify(snap.pieces));
+            state.selectedId = snap.selectedId;
+            state.settings = JSON.parse(JSON.stringify(snap.settings));
+            rebuildScene();
+        }
+
+        function undo() {
+            if (state.historyIndex < 1) return;
+            state.historyIndex--;
+            restoreSnapshot(state.history[state.historyIndex]);
+        }
+
+        function redo() {
+            if (state.historyIndex >= state.history.length - 1) return;
+            state.historyIndex++;
+            restoreSnapshot(state.history[state.historyIndex]);
+        }
+
+        function reset() {
+            state.settings = { halfTwists: 1, cutPercent: 50, autoRotate: false, showGrid: true, showGuide: true, walker: false };
+            state.pieces = [{ id: 1, kind: 'mobius', halfTwists: 1, length: 1, width: 1, offset: 0, parentCut: null }];
+            state.selectedId = 1;
+            state.history = [snapshot()];
+            state.historyIndex = 0;
+            state.nextId = 2;
+            $('twistRange').value = 1;
+            $('cutRange').value = 50;
+            rebuildScene();
+        }
+
+        function clearHistory() {
+            state.history = [snapshot()];
+            state.historyIndex = 0;
+            updateUI();
+        }
+
+        function setStatus(text) { $('statusText').textContent = text; }
+
+        function updateUI() {
+            const pieces = state.pieces;
+            const mobius = pieces.length === 1 && isMobius(pieces[0]);
+            $('cutCountTop').textContent = Math.max(0, state.historyIndex);
+            $('historyState').textContent = state.historyIndex;
+            $('twistLabel').textContent = state.settings.halfTwists;
+            const pct = state.settings.cutPercent;
+            $('cutLabel').textContent = `${pct}% · ${pct === 50 ? 'center' : pct < 50 ? 'left of center' : 'right of center'}`;
+            $('piecesStat').textContent = pieces.length;
+            $('twistsStat').textContent = pieces.length === 1 ? pieces[0].halfTwists : pieces.map(p => p.halfTwists).join(' + ');
+            $('typeStat').textContent = pieces.length === 1 ? (mobius ? 'Möbius' : 'Band') : 'Linked bands';
+            $('modeText').textContent = pieces.length === 1 ? (mobius ? 'Möbius strip' : `${pieces[0].halfTwists} half-twists`) : `${pieces.length} components`;
+
+            if (pieces.length === 1 && mobius) {
+                $('liveTitle').textContent = 'One side. One boundary.';
+                $('liveText').textContent = 'The surface is non-orientable: moving continuously across it can take you from one apparent side to the other without crossing the boundary.';
+            } else if (pieces.length === 1) {
+                $('liveTitle').textContent = `${pieces[0].halfTwists} half-twists · one loop`;
+                $('liveText').textContent = 'This result is an orientable twisted band. Because the half-twist count is even, a center cut can separate it into two components while preserving the same twist count.';
+            } else {
+                $('liveTitle').textContent = `${pieces.length} visible components`;
+                $('liveText').textContent = 'You are now looking at the recursive result of earlier cuts. Select a component by tapping it, then cut that component again.';
+            }
+
+            $('autoSwitch').classList.toggle('on', state.settings.autoRotate);
+            $('gridSwitch').classList.toggle('on', state.settings.showGrid);
+            $('guideSwitch').classList.toggle('on', state.settings.showGuide);
+            $('walkerSwitch').classList.toggle('on', state.settings.walker);
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const box = $('timeline');
+            box.innerHTML = '';
+            state.history.forEach((snap, i) => {
+                const el = document.createElement('button');
+                el.className = `step ${i === state.historyIndex ? 'active' : ''}`;
+                const pcs = snap.pieces.length;
+                const desc = pcs === 1 ? `${snap.pieces[0].halfTwists} half-twist${snap.pieces[0].halfTwists === 1 ? '' : 's'}` : `${pcs} components`;
+                el.innerHTML = `<b>Step ${i}</b><small>${i === 0 ? 'Original' : 'After cut'} · ${desc}</small>`;
+                el.addEventListener('click', () => {
+                    state.historyIndex = i;
+                    restoreSnapshot(state.history[i]);
+                });
+                box.appendChild(el);
+            });
+        }
+
+        $('twistRange').addEventListener('input', (e) => {
+            state.settings.halfTwists = Number(e.target.value);
+            if (state.historyIndex === 0 && state.pieces.length === 1) {
+                state.pieces[0].halfTwists = state.settings.halfTwists;
+                state.pieces[0].kind = isMobius(state.pieces[0]) ? 'mobius' : 'band';
+                rebuildScene();
+            } else {
+                setStatus('Twist control affects the original starting state. Reset to try another twist count.');
+                $('twistRange').value = state.pieces[0]?.halfTwists ?? 1;
+                state.settings.halfTwists = state.pieces[0]?.halfTwists ?? 1;
+            }
+        });
+
+        $('cutRange').addEventListener('input', (e) => {
+            state.settings.cutPercent = Number(e.target.value);
+            updateGuide();
+            updateUI();
+        });
+        $('centerBtn').addEventListener('click', () => { state.settings.cutPercent = 50; $('cutRange').value = 50; updateGuide(); updateUI(); });
+        $('cutBtn').addEventListener('click', cutSelected);
+        $('undoBtn').addEventListener('click', undo);
+        $('redoBtn').addEventListener('click', redo);
+        $('clearBtn').addEventListener('click', clearHistory);
+        $('resetBtn').addEventListener('click', reset);
+        $('autoRotateBtn').addEventListener('click', () => { state.settings.autoRotate = !state.settings.autoRotate; updateUI(); });
+
+        for (const [id, key] of [['autoSwitch', 'autoRotate'], ['gridSwitch', 'showGrid'], ['guideSwitch', 'showGuide'], ['walkerSwitch', 'walker']]) {
+            $(id).addEventListener('click', () => {
+                state.settings[key] = !state.settings[key];
+                rebuildScene();
+            });
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (e.button === 0) renderer.domElement.style.cursor = 'grabbing';
+        });
+        renderer.domElement.addEventListener('pointerup', () => renderer.domElement.style.cursor = 'grab');
+        renderer.domElement.style.cursor = 'grab';
+
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        renderer.domElement.addEventListener('dblclick', (e) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const hits = raycaster.intersectObjects(meshes, false);
+            if (hits.length) {
+                const id = hits[0].object.userData.pieceId;
+                state.selectedId = id;
+                setStatus(`Selected component #${id} — tap Cut to slice it.`);
+                meshes.forEach(m => m.material.emissive?.setHex(m.userData.pieceId === id ? 0x334b90 : 0x000000));
+            }
+        });
+
+        window.addEventListener('resize', resize);
+        function resize() {
+            const w = viewport.clientWidth;
+            const h = viewport.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h, false);
+        }
+        resize();
+        reset();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+            controls.autoRotate = state.settings.autoRotate;
+            controls.autoRotateSpeed = .7;
+            controls.update();
+            root.rotation.y += (cutFlash > 0 ? .004 : 0);
+            cutFlash = Math.max(0, cutFlash - .025);
+            updateWalker(t);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+
+</html>
